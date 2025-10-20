@@ -1,0 +1,46 @@
+# Node.js dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment variables
+.env
+
+# Python virtual environments & caches
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+venv/
+env/
+.venv/
+
+# Logs
+logs/
+*.log
+debug.log
+
+# OS-generated files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Build artifacts (if any future use)
+dist/
+build/
+
+# IDE settings
+.vscode/
+.idea/
+
+# Local SQLite or cache files (if created during dev)
+*.db
+*.sqlite
+
+# Render or deployment artifacts
+.render/
