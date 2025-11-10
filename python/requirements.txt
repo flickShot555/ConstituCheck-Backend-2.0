@@ -1,8 +1,8 @@
-fastapi==0.115.4          # to run a lightweight web server for API endpoints
-uvicorn==0.32.0           # to serve FastAPI (ASGI server)
-pinecone-client==4.1.0    # to connect and interact with Pinecone
-numpy==2.1.3              # for vector/matrix operations
-scikit-learn==1.5.2       # for cosine similarity (can use sklearn.metrics.pairwise)
-pydantic==2.9.2           # for input validation (used by FastAPI)
-python-dotenv==1.0.1      # to load API keys or Pinecone credentials
-requests==2.32.3          # to make outbound calls (if needed)
+fastapi==0.115.4
+uvicorn==0.32.0
+pinecone-client==4.1.0
+numpy==2.1.3
+sentence-transformers==2.2.2
+python-dotenv==1.0.1
+pydantic==2.9.2
+requests==2.32.3
