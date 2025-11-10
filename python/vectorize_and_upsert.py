@@ -53,23 +53,23 @@ def process_and_upsert(path: str) -> str:
     if not model:
         raise RuntimeError("Embedding model not loaded.")
 
-    if not os.path.isfile(file_path):
-        raise FileNotFoundError(f"File not found: {file_path}")
+    if not os.path.isfile(path):
+        raise FileNotFoundError(f"File not found: {path}")
 
-    ext = file_path.lower().split('.')[-1]
+    ext = path.lower().split('.')[-1]
     text = ""
     if ext == 'json':
-        with open(file_path, 'r', encoding='utf-8') as f:
+        with open(path, 'r', encoding='utf-8') as f:
             text = f.read()
     else:
         raise ValueError(f"Unsupported file type: {ext}")
 
     vector = model.encode(text).tolist()
-    doc_id = os.path.splitext(os.path.basename(file_path))[0]
+    doc_id = os.path.splitext(os.path.basename(path))[0]
 
     # Upsert to Pinecone
-    index.upsert(vectors=[(doc_id, vector, {"file_name": os.path.basename(file_path)})])
-    return {"doc_id": doc_id, "file_name": os.path.basename(file_path)}
+    index.upsert(vectors=[(doc_id, vector, {"file_name": os.path.basename(path)})])
+    return {"doc_id": doc_id, "file_name": os.path.basename(path)}
 
 def retrieve_similar(query_text: str, top_k: int = 5):
     """Return top-k similar vectors from Pinecone"""

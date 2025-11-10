@@ -45,3 +45,9 @@ build/
 
 # Render or deployment artifacts
 .render/
+
+#pem file
+constituck-vm_key.pem
+
+#extra
+extra.txt
