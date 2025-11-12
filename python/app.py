@@ -67,9 +67,24 @@ async def cluster_documents(req: ClusterRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get('/stats')
-def get_stats():
-    return jsonify(vectorize_and_upsert.get_dashboard_stats())
+#@app.get('/stats')
+#def get_stats():
+#    return jsonify(vectorize_and_upsert.get_dashboard_stats())
+
+@app.get("/stats")
+async def get_stats():
+    # Demo data for your FYP
+    return {
+        "total_users": 35,
+        "user_growth": "+5%",
+        "total_documents": 12,
+        "document_growth": "+8%",
+        "active_sessions": 3,
+        "database_size": "1.3 GB",
+        "compliance_rate": "87%",
+        "most_queried_document": "FreedomOfSpeech.json",
+        "system_health": "Healthy"
+    }
 
 if __name__ == "__main__":
     import uvicorn
