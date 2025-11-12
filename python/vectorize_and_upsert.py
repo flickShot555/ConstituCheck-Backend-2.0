@@ -6,6 +6,8 @@ from sentence_transformers import SentenceTransformer
 from sklearn.cluster import MiniBatchKMeans
 import numpy as np
 import json
+import psycopg2
+from uuid import uuid4
 
 # Load env
 load_dotenv()
@@ -27,6 +29,27 @@ MODEL_PATH = os.getenv("SENTENCE_MODEL_PATH") or "all-MiniLM-L6-v2"
 # Utility functions
 # -----------------------
 
+# PostgreSQL connection (adjust to your credentials)
+conn = psycopg2.connect(
+    dbname="your_db",
+    user="your_user",
+    password="your_password",
+    host="localhost",
+    port="5432"
+)
+cursor = conn.cursor()
+
+# Ensure table exists
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS documents (
+    id UUID PRIMARY KEY,
+    file_name TEXT,
+    content TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+)
+""")
+conn.commit()
+
 try:
     model = SentenceTransformer(MODEL_PATH)
 except Exception as e:
@@ -44,38 +67,75 @@ def vectorize_text(text: str) -> list[float]:
     return model.encode(text).tolist()
 
 def process_and_upsert(path: str) -> str:
-    """Vectorize and upsert document file into Pinecone"""
-    #text = extract_text(path)
-    #vector = vectorize_text(text)
-    #doc_id = os.path.splitext(os.path.basename(path))[0]
-    #index.upsert(vectors=[(doc_id, vector, {"file_name": os.path.basename(path)})])
-    #return doc_id
+    """Vectorize, upsert to Pinecone, and store original doc in PostgreSQL"""
+
     if not model:
         raise RuntimeError("Embedding model not loaded.")
-
     if not os.path.isfile(path):
         raise FileNotFoundError(f"File not found: {path}")
 
-    ext = path.lower().split('.')[-1]
-    text = ""
-    if ext == 'json':
-        with open(path, 'r', encoding='utf-8') as f:
-            text = f.read()
-    else:
+    ext = os.path.splitext(path)[-1].lower()
+    if ext not in ['.json', '.txt']:
         raise ValueError(f"Unsupported file type: {ext}")
 
-    vector = model.encode(text).tolist()
-    doc_id = os.path.splitext(os.path.basename(path))[0]
+    with open(path, 'r', encoding='utf-8') as f:
+        text = f.read()
 
-    # Upsert to Pinecone
-    index.upsert(vectors=[(doc_id, vector, {"file_name": os.path.basename(path)})])
+    # Handle JSON files by flattening or stringifying
+    if ext == '.json':
+        try:
+            json_content = json.loads(text)
+            text = json.dumps(json_content)
+        except json.JSONDecodeError:
+            raise ValueError("Invalid JSON format")
+
+    # Create a unique document ID
+    doc_id = str(uuid4())
+
+    # Generate vector embedding
+    vector = model.encode(text).tolist()
+
+    # Insert into PostgreSQL
+    cursor.execute(
+        "INSERT INTO documents (id, file_name, content) VALUES (%s, %s, %s)",
+        (doc_id, os.path.basename(path), text)
+    )
+    conn.commit()
+
+    # Upsert into Pinecone with reference metadata
+    index.upsert(vectors=[
+        (doc_id, vector, {"file_name": os.path.basename(path)})
+    ])
+
     return {"doc_id": doc_id, "file_name": os.path.basename(path)}
 
 def retrieve_similar(query_text: str, top_k: int = 5):
-    """Return top-k similar vectors from Pinecone"""
+    """Return top-k similar vectors and their original documents"""
     query_vector = vectorize_text(query_text)
-    results = index.query(vector=query_vector, top_k=top_k, include_values=False, include_metadata=True)
-    return [{"vector_id": match.id, "score": match.score, "metadata": match.metadata} for match in results.matches]
+    results = index.query(vector=query_vector, top_k=top_k, include_metadata=True)
+
+    response = []
+    for match in results.matches:
+        doc_id = match.id
+        cursor.execute("SELECT file_name, content FROM documents WHERE id = %s", (doc_id,))
+        record = cursor.fetchone()
+
+        if record:
+            file_name, content = record
+            response.append({
+                "vector_id": doc_id,
+                "file_name": file_name,
+                "score": match.score,
+                "original_document": content
+            })
+        else:
+            response.append({
+                "vector_id": doc_id,
+                "score": match.score,
+                "error": "Document not found in PostgreSQL"
+            })
+
+    return response
 
 def cluster_documents(n_clusters: int = 5):
     """Cluster all vectors and return vector_id -> cluster mapping"""
