@@ -8,6 +8,8 @@ import numpy as np
 import json
 import psycopg2
 from uuid import uuid4
+import sqlite3
+from datetime import datetime, timedelta
 
 # Load env
 load_dotenv()
@@ -154,3 +156,52 @@ def cluster_documents(n_clusters: int = 5):
     kmeans = MiniBatchKMeans(n_clusters=n_clusters, random_state=42, batch_size=32)
     labels = kmeans.fit_predict(X)
     return dict(zip(vector_ids, labels.tolist()))
+
+def get_dashboard_stats():
+    conn = sqlite3.connect("database/constitucheck.db")
+    cursor = conn.cursor()
+
+    stats = {}
+
+    # Total users
+    cursor.execute("SELECT COUNT(*) FROM USERS")
+    stats["total_users"] = cursor.fetchone()[0]
+
+    # New users this month
+    cursor.execute("SELECT COUNT(*) FROM USERS WHERE created_at >= date('now', '-1 month')")
+    new_users = cursor.fetchone()[0]
+    stats["user_growth"] = f"{(new_users / (stats['total_users'] or 1)) * 100:.2f}%"
+
+    # Documents
+    cursor.execute("SELECT COUNT(*) FROM DOCUMENTS")
+    stats["total_documents"] = cursor.fetchone()[0]
+
+    cursor.execute("SELECT COUNT(*) FROM DOCUMENTS WHERE created_at >= date('now', '-1 month')")
+    new_docs = cursor.fetchone()[0]
+    stats["document_growth"] = f"{(new_docs / (stats['total_documents'] or 1)) * 100:.2f}%"
+
+    # Active sessions
+    cursor.execute("SELECT COUNT(*) FROM SESSIONS WHERE active = 1")
+    stats["active_sessions"] = cursor.fetchone()[0]
+
+    # Compliance percentage
+    cursor.execute("""
+        SELECT ROUND(100.0 * SUM(CASE WHEN compliance = 1 THEN 1 ELSE 0 END) / COUNT(*), 2)
+        FROM DOCUMENTS
+    """)
+    stats["compliance_rate"] = f"{cursor.fetchone()[0] or 0}%"
+
+    # System health (mocked)
+    stats["system_health"] = {
+        "CPU_Usage": "25%",
+        "Memory_Usage": "62%",
+        "Disk_Space": "78%"
+    }
+
+    # Most queried document
+    cursor.execute("SELECT title FROM DOCUMENTS ORDER BY query_count DESC LIMIT 1")
+    result = cursor.fetchone()
+    stats["most_queried_doc"] = result[0] if result else "N/A"
+
+    conn.close()
+    return stats

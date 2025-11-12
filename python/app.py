@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+from flask import jsonify
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -65,6 +66,10 @@ async def cluster_documents(req: ClusterRequest):
         return {"status": "success", "vector_clusters": mapping}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.route('/stats', methods=['GET'])
+def get_stats():
+    return jsonify(vectorize_and_upsert.get_dashboard_stats())
 
 if __name__ == "__main__":
     import uvicorn
