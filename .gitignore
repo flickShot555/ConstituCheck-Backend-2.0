@@ -48,6 +48,8 @@ build/
 
 #pem file
 constituck-vm_key.pem
+constituck-vm_key.pub
+constituck-vm-2_key.pem
 
 #extra
 extra.txt
