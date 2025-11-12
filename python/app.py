@@ -67,7 +67,7 @@ async def cluster_documents(req: ClusterRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.route('/stats', methods=['GET'])
+@app.get('/stats')
 def get_stats():
     return jsonify(vectorize_and_upsert.get_dashboard_stats())
 
