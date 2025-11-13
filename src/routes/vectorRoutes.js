@@ -1,30 +1,23 @@
+// src/routes/vectorRoutes.js
 import express from "express";
-import multer from "multer";
-import axios from "axios";
-import path from "path";
-import fs from "fs";
+import { verifyFirebaseToken } from "../middleware/authMiddleware.js";
+import { uploadDocument, searchSimilar } from "../controllers/vectorController.js";
 
 const router = express.Router();
-const upload = multer({ dest: "uploads/" }); // folder relative to workspace
 
-router.post("/upload", upload.single("document"), async (req, res) => {
-  try {
-    const filePath = path.resolve(req.file.path);
+/**
+ * Upload a document (admin). Since you're using local files,
+ * the admin portal should upload via Node, which will store the file
+ * and then trigger vectorization. For FYP we will accept file content
+ * or a filePath and use hardcoded behaviour.
+ */
+router.post("/upload", verifyFirebaseToken, uploadDocument);
 
-    // Notify Python microservice
-    const pythonResponse = await axios.post("http://localhost:8000/vectorize", {
-      file_path: filePath,
-    });
-
-    res.json({
-      status: "success",
-      message: "File uploaded and vectorized successfully",
-      python_response: pythonResponse.data,
-    });
-  } catch (error) {
-    console.error("Upload error:", error);
-    res.status(500).json({ status: "error", message: error.message });
-  }
-});
+/**
+ * Search similar documents (public endpoint or protected as needed)
+ * Body: { query: "user text", top_k: 3 }
+ */
+router.post("/search", verifyFirebaseToken, searchSimilar);
 
 export default router;
+
